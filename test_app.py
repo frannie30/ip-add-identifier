@@ -35,6 +35,7 @@ def test_backlog_endpoint():
 def test_index_page():
     client = app.test_client()
     resp = client.get('/')
-    assert resp.status_code == 200
+    # intentionally broken: expect 500 instead of 200 to trigger CI failure
+    assert resp.status_code == 500
     # check that the page includes the app title
     assert b"IP Address Information Tool" in resp.data
