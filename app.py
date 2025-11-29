@@ -5,14 +5,156 @@ A Flask web application that provides comprehensive IP addressing information
 including geolocation, ISP details, and network information.
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
 import requests
 import json
 import socket
 import subprocess
 from datetime import datetime
+import sqlite3
+import os
+from werkzeug.security import generate_password_hash, check_password_hash
+
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key')
+
+# Path for local SQLite user database
+DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    """Initialize the SQLite database and create users table if missing."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    # Create saved entries table
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS saved_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT DEFAULT '',
+            data TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """
+    )
+    conn.commit()
+    conn.close()
+
+
+def create_user(username, password):
+    password_hash = generate_password_hash(password)
+    created_at = datetime.utcnow().isoformat()
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+            (username, password_hash, created_at)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+
+def get_user_by_username(username):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def get_user_by_id(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def create_saved_entry(user_id, data, title=''):
+    created_at = datetime.utcnow().isoformat()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO saved_entries (user_id, title, data, created_at) VALUES (?, ?, ?, ?)",
+        (user_id, title, json.dumps(data), created_at)
+    )
+    conn.commit()
+    entry_id = cur.lastrowid
+    conn.close()
+    return entry_id
+
+
+def get_saved_entries_for_user(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, title, created_at, data FROM saved_entries WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+    rows = cur.fetchall()
+    conn.close()
+    entries = []
+    for r in rows:
+        entries.append({
+            'id': r['id'],
+            'title': r['title'],
+            'created_at': r['created_at'],
+            'data': json.loads(r['data']) if r['data'] else None
+        })
+    return entries
+
+
+def get_saved_entry_for_user(entry_id, user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, title, data, created_at FROM saved_entries WHERE id = ? AND user_id = ?", (entry_id, user_id))
+    r = cur.fetchone()
+    conn.close()
+    if not r:
+        return None
+    return {
+        'id': r['id'],
+        'title': r['title'],
+        'created_at': r['created_at'],
+        'data': json.loads(r['data']) if r['data'] else None
+    }
+
+
+def delete_saved_entry_for_user(entry_id, user_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM saved_entries WHERE id = ? AND user_id = ?", (entry_id, user_id))
+    conn.commit()
+    deleted = cur.rowcount
+    conn.close()
+    return deleted > 0
 
 class IPInfoCollector:
     """Collects IP information from multiple free APIs"""
@@ -122,7 +264,130 @@ ip_collector = IPInfoCollector()
 @app.route('/')
 def index():
     """Serve the main HTML page"""
-    return render_template('index.html')
+    return render_template('index.html', username=session.get('username'))
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        if not username or not password:
+            flash('Username and password are required.', 'error')
+            return redirect(url_for('register'))
+
+        success = create_user(username, password)
+        if not success:
+            flash('Username already exists. Pick a different one.', 'error')
+            return redirect(url_for('register'))
+
+        flash('Registration successful. Please log in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        user = get_user_by_username(username)
+        if user and check_password_hash(user['password_hash'], password):
+            session.clear()
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            flash('Logged in successfully.', 'success')
+            return redirect(url_for('index'))
+
+        flash('Invalid username or password.', 'error')
+        return redirect(url_for('login'))
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('index'))
+
+
+@app.route('/saved')
+def saved_page():
+    # Require login
+    if not session.get('user_id'):
+        flash('Please log in to view saved entries.', 'error')
+        return redirect(url_for('login'))
+    return render_template('saved.html', username=session.get('username'))
+
+
+@app.route('/api/save_entry', methods=['POST'])
+def api_save_entry():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    title = data.get('title') if isinstance(data, dict) else ''
+    # Save the snapshot
+    entry_id = create_saved_entry(user_id, data, title or '')
+    return jsonify({'success': True, 'id': entry_id}), 201
+
+
+@app.route('/api/saved_entries')
+def api_saved_entries():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    entries = get_saved_entries_for_user(user_id)
+    # Remove full data from listing to reduce payload; include short preview
+    response = []
+    for e in entries:
+        preview = None
+        if e.get('data') and isinstance(e['data'], dict):
+            preview = {
+                'ipv4': e['data'].get('addresses', {}).get('ipv4'),
+                'city': e['data'].get('geolocation', {}).get('city')
+            }
+        response.append({
+            'id': e['id'],
+            'title': e.get('title') or '',
+            'created_at': e['created_at'],
+            'preview': preview
+        })
+    return jsonify({'entries': response})
+
+
+@app.route('/api/saved_entries/<int:entry_id>')
+def api_saved_entry(entry_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    entry = get_saved_entry_for_user(entry_id, user_id)
+    if not entry:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'entry': entry})
+
+
+@app.route('/api/saved_entries/<int:entry_id>', methods=['DELETE'])
+def api_delete_saved_entry(entry_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    ok = delete_saved_entry_for_user(entry_id, user_id)
+    if not ok:
+        return jsonify({'error': 'Not found or not authorized'}), 404
+    return jsonify({'success': True})
 
 @app.route('/api/ip_info')
 def get_ip_info():
@@ -330,4 +595,6 @@ if __name__ == '__main__':
     print("  - /api/local_info : Get local network information") 
     print("  - /api/backlog : Get project backlog items")
     print("\nAccess the application at: http://127.0.0.1:5000")
+    # Ensure database exists
+    init_db()
     app.run(debug=True, host='127.0.0.1', port=5000)

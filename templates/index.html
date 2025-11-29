@@ -4,191 +4,223 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IP Address Information Tool</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color:#eee; }
+        .container { display:flex; flex-direction:column; min-height:100vh; }
+        header.header { padding:25px 50px; background: rgba(255,255,255,0.05); backdrop-filter:blur(10px); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.2); }
+        .header h1 { font-size:1.8rem; display:flex; align-items:center; gap:10px; }
+        .subtitle { font-size:0.9rem; color:#aaa; }
+        .auth-links a, .auth-links span { margin-left:15px; text-decoration:none; color:#6C63FF; font-weight:600; transition:0.3s; }
+        .auth-links a:hover { color:#00D1FF; }
+
+        main.main-content { flex:1; padding:30px 50px; display:flex; flex-direction:column; gap:25px; }
+        .control-panel { display:flex; gap:15px; margin-bottom:20px; }
+        .btn { padding:12px 20px; border:none; border-radius:12px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px; transition:0.3s; }
+        .btn-primary { background:#6C63FF; color:#fff; }
+        .btn-primary:hover { background:#00D1FF; box-shadow:0 0 10px #00D1FF; }
+        .btn-secondary { background:rgba(255,255,255,0.1); color:#fff; }
+        .btn-secondary:hover { background:rgba(255,255,255,0.2); }
+
+        .loading, .error { padding:20px; text-align:center; background:rgba(255,255,255,0.05); border-radius:15px; backdrop-filter:blur(8px); display:flex; justify-content:center; align-items:center; gap:10px; font-weight:500; }
+        .loading.hidden, .error.hidden, .ip-info.hidden { display:none; }
+        .spinner { border:4px solid rgba(255,255,255,0.2); border-top:4px solid #6C63FF; border-radius:50%; width:25px; height:25px; animation:spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .ip-info { display:flex; flex-direction:column; gap:20px; }
+
+        .info-card { background:rgba(255,255,255,0.05); border-radius:15px; backdrop-filter:blur(12px); padding:20px; border:1px solid rgba(255,255,255,0.2); transition: transform 0.3s, box-shadow 0.3s; }
+        .info-card:hover { transform: translateY(-3px); box-shadow:0 5px 20px rgba(108,99,255,0.4); }
+        .card-header h3 { display:flex; align-items:center; gap:10px; margin-bottom:15px; color:#fff; }
+        .card-content .info-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr)); gap:15px; }
+        .info-item label { font-weight:500; color:#ccc; }
+        .info-item span { font-weight:600; color:#fff; display:flex; align-items:center; gap:5px; }
+        .copy-btn { background:transparent; border:none; cursor:pointer; color:#6C63FF; transition:0.3s; }
+        .copy-btn:hover { color:#00D1FF; }
+
+        .security-indicators { display:flex; gap:20px; flex-wrap:wrap; }
+        .security-item .indicator { display:flex; align-items:center; gap:8px; padding:10px 15px; border-radius:12px; background:rgba(255,255,255,0.05); color:#fff; font-weight:500; transition:0.3s; }
+        .security-item .indicator.active { background:#6C63FF; box-shadow:0 0 10px #6C63FF; }
+
+        footer.footer { text-align:center; padding:15px; background:rgba(255,255,255,0.05); backdrop-filter:blur(8px); font-size:0.85rem; color:#aaa; }
+
+        .toast { position:fixed; bottom:20px; right:20px; background:#6C63FF; color:#fff; padding:12px 20px; border-radius:12px; display:flex; align-items:center; gap:10px; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+        .toast.show { opacity:1; pointer-events:auto; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <div class="header-content">
-                <h1><i class="fas fa-globe"></i> IP Address Information Tool</h1>
-                <p class="subtitle">Network Technician's IP Addressing Information System</p>
-            </div>
-        </header>
+   <header class="header">
+    <div class="header-left">
+        <h1><i class="fas fa-globe"></i> IP Info Tool</h1>
+        <p class="subtitle">Network Technician's IP Addressing System</p>
+    </div>
+
+    <div class="header-right">
+        {% if username %}
+            <span class="username">Hello, {{ username }}</span>
+            <a href="{{ url_for('saved_page') }}" class="btn btn-secondary">Saved Items</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-login">Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-register">Register</a>
+        {% endif %}
+    </div>
+</header>
+
+<style>
+/* Full-width header */
+.header {
+    width: 100%;
+    padding: 15px 50px;
+    background: #1e1e2f;
+    display: flex;
+    justify-content: space-between; /* left title, right buttons */
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Left: title and subtitle */
+.header-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-left h1 {
+    font-size: 1.8rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: #fff;
+}
+.header-left h1 i { color: #00D1FF; }
+
+.header-left .subtitle {
+    font-size: 0.9rem;
+    color: #b0b0c0;
+    margin-top: 3px;
+}
+
+/* Right: auth buttons */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Username */
+.header-right .username {
+    font-weight: 500;
+    color: #00D1FF;
+}
+
+/* Buttons */
+.header-right a {
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.btn-login { background: #6C63FF; color: #fff; }
+.btn-login:hover { background: #7f74ff; }
+
+.btn-register { background: #00D1FF; color: #1e1e2f; }
+.btn-register:hover { background: #33f0ff; }
+
+.btn-logout { background: #FF6B6B; color: #fff; }
+.btn-logout:hover { background: #ff4b4b; }
+</style>
+
 
         <main class="main-content">
-            <!-- Control Panel -->
             <div class="control-panel">
-                <button id="fetchIpBtn" class="btn btn-primary">
-                    <i class="fas fa-search"></i>
-                    Get IP Information
-                </button>
-                <button id="refreshBtn" class="btn btn-secondary">
-                    <i class="fas fa-refresh"></i>
-                    Refresh
-                </button>
+                <button id="fetchIpBtn" class="btn btn-primary"><i class="fas fa-search"></i> Get IP Information</button>
+                <button id="refreshBtn" class="btn btn-secondary"><i class="fas fa-refresh"></i> Refresh</button>
+                {% if username %}
+                <button id="saveBtn" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                {% endif %}
             </div>
 
-            <!-- Loading Indicator -->
             <div id="loading" class="loading hidden">
                 <div class="spinner"></div>
                 <p>Fetching IP information...</p>
             </div>
 
-            <!-- Error Display -->
             <div id="error" class="error hidden">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span id="errorMessage"></span>
             </div>
 
-            <!-- IP Information Display -->
             <div id="ipInfo" class="ip-info hidden">
                 <!-- IP Addresses Card -->
                 <div class="info-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-network-wired"></i> IP Addresses</h3>
-                    </div>
+                    <div class="card-header"><h3><i class="fas fa-network-wired"></i> IP Addresses</h3></div>
                     <div class="card-content">
                         <div class="info-grid">
-                            <div class="info-item">
-                                <label>IPv4 Address:</label>
-                                <span id="ipv4" class="ip-address">-</span>
-                                <button class="copy-btn" data-copy="ipv4">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                            <div class="info-item">
-                                <label>IPv6 Address:</label>
-                                <span id="ipv6" class="ip-address">-</span>
-                                <button class="copy-btn" data-copy="ipv6">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
+                            <div class="info-item"><label>IPv4:</label><span id="ipv4">-</span><button class="copy-btn" data-copy="ipv4"><i class="fas fa-copy"></i></button></div>
+                            <div class="info-item"><label>IPv6:</label><span id="ipv6">-</span><button class="copy-btn" data-copy="ipv6"><i class="fas fa-copy"></i></button></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Geolocation Card -->
                 <div class="info-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-map-marker-alt"></i> Geolocation</h3>
-                    </div>
+                    <div class="card-header"><h3><i class="fas fa-map-marker-alt"></i> Geolocation</h3></div>
                     <div class="card-content">
                         <div class="info-grid">
-                            <div class="info-item">
-                                <label>City:</label>
-                                <span id="city">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Region:</label>
-                                <span id="region">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Country:</label>
-                                <span id="country">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Country Code:</label>
-                                <span id="countryCode">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Postal Code:</label>
-                                <span id="postalCode">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Timezone:</label>
-                                <span id="timezone">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Coordinates:</label>
-                                <span id="coordinates">-</span>
-                            </div>
+                            <div class="info-item"><label>City:</label><span id="city">-</span></div>
+                            <div class="info-item"><label>Region:</label><span id="region">-</span></div>
+                            <div class="info-item"><label>Country:</label><span id="country">-</span></div>
+                            <div class="info-item"><label>Country Code:</label><span id="countryCode">-</span></div>
+                            <div class="info-item"><label>Postal:</label><span id="postalCode">-</span></div>
+                            <div class="info-item"><label>Timezone:</label><span id="timezone">-</span></div>
+                            <div class="info-item"><label>Coordinates:</label><span id="coordinates">-</span></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Network Information Card -->
                 <div class="info-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-server"></i> Network Information</h3>
-                    </div>
+                    <div class="card-header"><h3><i class="fas fa-server"></i> Network Information</h3></div>
                     <div class="card-content">
                         <div class="info-grid">
-                            <div class="info-item">
-                                <label>ISP:</label>
-                                <span id="isp">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Organization:</label>
-                                <span id="organization">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>ASN:</label>
-                                <span id="asn">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>AS Description:</label>
-                                <span id="asDescription">-</span>
-                            </div>
+                            <div class="info-item"><label>ISP:</label><span id="isp">-</span></div>
+                            <div class="info-item"><label>Organization:</label><span id="organization">-</span></div>
+                            <div class="info-item"><label>ASN:</label><span id="asn">-</span></div>
+                            <div class="info-item"><label>AS Description:</label><span id="asDescription">-</span></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Security Information Card -->
                 <div class="info-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-shield-alt"></i> Security Analysis</h3>
-                    </div>
+                    <div class="card-header"><h3><i class="fas fa-shield-alt"></i> Security Analysis</h3></div>
                     <div class="card-content">
                         <div class="security-indicators">
-                            <div class="security-item">
-                                <span class="indicator" id="mobileIndicator">
-                                    <i class="fas fa-mobile-alt"></i>
-                                    Mobile Connection
-                                </span>
-                            </div>
-                            <div class="security-item">
-                                <span class="indicator" id="proxyIndicator">
-                                    <i class="fas fa-mask"></i>
-                                    Proxy/VPN
-                                </span>
-                            </div>
-                            <div class="security-item">
-                                <span class="indicator" id="hostingIndicator">
-                                    <i class="fas fa-cloud"></i>
-                                    Hosting Provider
-                                </span>
-                            </div>
+                            <div class="security-item"><span class="indicator" id="mobileIndicator"><i class="fas fa-mobile-alt"></i> Mobile Connection</span></div>
+                            <div class="security-item"><span class="indicator" id="proxyIndicator"><i class="fas fa-mask"></i> Proxy/VPN</span></div>
+                            <div class="security-item"><span class="indicator" id="hostingIndicator"><i class="fas fa-cloud"></i> Hosting Provider</span></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Local Information Card -->
                 <div class="info-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-laptop"></i> Local Information</h3>
-                    </div>
+                    <div class="card-header"><h3><i class="fas fa-laptop"></i> Local Information</h3></div>
                     <div class="card-content">
                         <div class="info-grid">
-                            <div class="info-item">
-                                <label>Hostname:</label>
-                                <span id="hostname">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Local IP:</label>
-                                <span id="localIp">-</span>
-                            </div>
-                            <div class="info-item">
-                                <label>Last Updated:</label>
-                                <span id="timestamp">-</span>
-                            </div>
+                            <div class="info-item"><label>Hostname:</label><span id="hostname">-</span></div>
+                            <div class="info-item"><label>Local IP:</label><span id="localIp">-</span></div>
+                            <div class="info-item"><label>Last Updated:</label><span id="timestamp">-</span></div>
                         </div>
                     </div>
                 </div>
             </div>
-
-
         </main>
 
         <footer class="footer">
@@ -196,7 +228,6 @@
         </footer>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
         <i class="fas fa-check"></i>
         <span id="toastMessage">Copied to clipboard!</span>

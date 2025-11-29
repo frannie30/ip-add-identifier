@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saved Snapshots - IP Info</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+
+body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e, #6C63FF);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    color:#eee;
+    position: relative;
+    overflow-x: hidden;
+}
+
+@keyframes gradientBG {
+    0% { background-position:0% 50%; }
+    50% { background-position:100% 50%; }
+    100% { background-position:0% 50%; }
+}
+
+.particle-container {
+    position: absolute; width: 100%; height: 100%;
+    top: 0; left: 0; overflow: hidden; z-index: 0;
+}
+
+.particle {
+    position: absolute;
+    width: 15px; height: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: float 8s infinite;
+}
+
+.particle:nth-child(1){left:10%;animation-delay:0s;}
+.particle:nth-child(2){left:30%;animation-delay:2s;}
+.particle:nth-child(3){left:50%;animation-delay:4s;}
+.particle:nth-child(4){left:70%;animation-delay:1s;}
+.particle:nth-child(5){left:90%;animation-delay:3s;}
+
+@keyframes float {
+    0%{transform:translateY(100vh) scale(1);opacity:0.5;}
+    50%{opacity:1;}
+    100%{transform:translateY(-100vh) scale(0.5);opacity:0;}
+}
+
+.container {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+header.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    animation: fadeIn 1s ease forwards;
+}
+
+.header h1 { font-size: 2rem; display:flex; align-items:center; gap:10px; color:#fff; }
+.header h1 i { color:#00D1FF; }
+
+.header-actions a {
+    padding: 10px 18px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight:600;
+    transition:0.3s;
+}
+
+.btn-back { background: rgba(255,255,255,0.1); color:#fff; }
+.btn-back:hover { background: #6C63FF; box-shadow:0 0 10px #6C63FF; }
+.btn-logout { background: #FF4D4D; color:#fff; }
+.btn-logout:hover { background: #FF1A1A; box-shadow:0 0 10px #FF1A1A; }
+
+main.main-content {
+    display: flex;
+    gap: 20px;
+    animation: fadeIn 1.2s ease forwards;
+    justify-content: space-between;
+}
+
+.info-card {
+    flex: 1 1 48%;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    border-radius:16px;
+    padding:20px;
+    border:1px solid rgba(255,255,255,0.2);
+    box-shadow:0 8px 32px rgba(0,0,0,0.6);
+    transition: transform 0.3s, box-shadow 0.3s;
+    max-height: 700px;
+    display: flex;
+    flex-direction: column;
+}
+
+.info-card:hover { transform:translateY(-5px); box-shadow:0 12px 40px rgba(108,99,255,0.7); }
+
+h3 {
+    margin-bottom:15px;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border-bottom:1px solid rgba(255,255,255,0.15);
+    padding-bottom:8px;
+    font-size:1.4rem;
+}
+
+/* List */
+#entriesList {
+    overflow-y: auto;
+    flex-grow: 1;
+    scrollbar-width: thin;
+}
+
+/* Details Container */
+#entryDetail {
+    overflow-y: auto;
+    flex-grow: 1;
+    display:flex;
+    flex-direction:column;
+    gap:25px;
+    padding-right:5px;
+}
+
+/* Sections */
+.info-section {
+    background: rgba(255,255,255,0.03);
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.3);
+    transition:0.3s;
+}
+
+.info-section:hover {
+    border-color:#6C63FF;
+    box-shadow:0 0 15px rgba(108,99,255,0.4);
+}
+
+.info-section h4 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-left:4px solid #00D1FF;
+    padding-left:10px;
+    margin-bottom:10px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    width: 100%;
+}
+
+.info-item {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 12px 14px;
+    border-radius: 10px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-shadow:0 4px 10px rgba(0,0,0,0.25);
+}
+
+.info-item label {
+    font-size: 0.8rem;
+    opacity: 0.75;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.info-item span {
+    font-size: 0.95rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+/* Unified Buttons */
+.btn-primary, .btn-action {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.btn-primary {
+    background: #6C63FF;
+    color: #fff;
+}
+.btn-primary:hover {
+    background: #5750c9;
+    box-shadow: 0 4px 15px rgba(108,99,255,0.5);
+}
+
+.btn-action.delete {
+    background: #FF4D4D;
+    color: #fff;
+}
+.btn-action.delete:hover {
+    background: #FF1A1A;
+    box-shadow: 0 4px 15px rgba(255,0,0,0.5);
+}
+
+/* Scrollbar */
+#entriesList::-webkit-scrollbar,
+#entryDetail::-webkit-scrollbar {
+    width: 6px;
+}
+
+#entriesList::-webkit-scrollbar-thumb,
+#entryDetail::-webkit-scrollbar-thumb {
+    background:#6C63FF;
+    border-radius:10px;
+}
+
+@keyframes fadeIn { 0%{transform:translateY(-20px);opacity:0;} 100%{transform:translateY(0);opacity:1;} }
+
+@media (max-width:1200px){
+    main.main-content { flex-direction: column; }
+    .info-card { flex: 1 1 100%; max-height: 600px; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="particle-container">
+    <span class="particle"></span>
+    <span class="particle"></span>
+    <span class="particle"></span>
+    <span class="particle"></span>
+    <span class="particle"></span>
+</div>
+
+<div class="container">
+    <header class="header">
+        <h1><i class="fas fa-save"></i> Saved Snapshots</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('index') }}" class="btn-back">Back</a>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+
+        <!-- Saved Snapshots List -->
+        <div class="info-card">
+            <h3>Your Saved Snapshots</h3>
+            <div id="entriesList">
+                <p>Loading saved entries...</p>
+            </div>
+        </div>
+
+        <!-- Snapshot Details -->
+        <div class="info-card">
+            <h3>Snapshot Details</h3>
+
+            <div id="entryDetail">
+
+                <!-- Addresses -->
+                <div class="info-section">
+                    <h4><i class="fas fa-network-wired"></i> Addresses</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>IPv4:</label> <span id="snapshot_ipv4">-</span></div>
+                        <div class="info-item"><label>IPv6:</label> <span id="snapshot_ipv6">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Geolocation -->
+                <div class="info-section">
+                    <h4><i class="fas fa-map-marker-alt"></i> Geolocation</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>City:</label> <span id="snapshot_city">-</span></div>
+                        <div class="info-item"><label>Region:</label> <span id="snapshot_region">-</span></div>
+                        <div class="info-item"><label>Country:</label> <span id="snapshot_country">-</span></div>
+                        <div class="info-item"><label>Country Code:</label> <span id="snapshot_country_code">-</span></div>
+                        <div class="info-item"><label>Postal Code:</label> <span id="snapshot_postal">-</span></div>
+                        <div class="info-item"><label>Timezone:</label> <span id="snapshot_timezone">-</span></div>
+                        <div class="info-item"><label>Coordinates:</label> <span id="snapshot_coords">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Local -->
+                <div class="info-section">
+                    <h4><i class="fas fa-laptop"></i> Local</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Hostname:</label> <span id="snapshot_hostname">-</span></div>
+                        <div class="info-item"><label>Local IPs:</label> <span id="snapshot_local_ips">-</span></div>
+                        <div class="info-item"><label>Timestamp:</label> <span id="snapshot_timestamp">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Network -->
+                <div class="info-section">
+                    <h4><i class="fas fa-server"></i> Network</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>ISP:</label> <span id="snapshot_isp">-</span></div>
+                        <div class="info-item"><label>AS Number:</label> <span id="snapshot_asn">-</span></div>
+                        <div class="info-item"><label>AS Description:</label> <span id="snapshot_asdesc">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Additional -->
+                <div class="info-section">
+                    <h4><i class="fas fa-info-circle"></i> Additional</h4>
+                    <div class="info-grid">
+                        <div class="info-item"><label>Hostname:</label> <span id="snapshot_add_hostname">-</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px; display:flex; gap:10px;">
+                    <button id="openBtn" class="btn-primary" style="display:none;">Open in Viewer</button>
+                    <button id="deleteBtn" class="btn-action delete" style="display:none;">Delete</button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">&copy; 2025 Network Engineering Department</footer>
+</div>
+
+<script src="{{ url_for('static', filename='js/saved.js') }}"></script>
+</body>
+</html>

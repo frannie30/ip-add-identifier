@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - IP Info</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', sans-serif; }
+
+    body {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e, #6C63FF);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+        color:#eee;
+        overflow: hidden;
+        position: relative;
+    }
+
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Floating particles */
+    .particle-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0; left: 0;
+        overflow: hidden;
+        z-index: 0;
+    }
+
+    .particle {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        animation: float 8s infinite;
+    }
+
+    .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+    .particle:nth-child(2) { left: 30%; animation-delay: 2s; }
+    .particle:nth-child(3) { left: 50%; animation-delay: 4s; }
+    .particle:nth-child(4) { left: 70%; animation-delay: 1s; }
+    .particle:nth-child(5) { left: 90%; animation-delay: 3s; }
+
+    @keyframes float {
+        0% { transform: translateY(100vh) scale(1); opacity: 0.5; }
+        50% { opacity: 1; }
+        100% { transform: translateY(-100vh) scale(0.5); opacity: 0; }
+    }
+
+    .auth-container {
+        position: relative;
+        z-index: 10;
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 50px 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        border: 1px solid rgba(255,255,255,0.2);
+        text-align: center;
+        animation: fadeIn 1.2s ease forwards;
+    }
+
+    @keyframes fadeIn {
+        0% { transform: translateY(-20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+
+    h2 {
+        font-size: 2rem;
+        margin-bottom: 30px;
+        color:#fff;
+    }
+
+    label {
+        display: block;
+        text-align: left;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color:#ccc;
+    }
+
+    input {
+        width: 100%;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        border: none;
+        font-size: 1rem;
+        background: rgba(255,255,255,0.1);
+        color:#fff;
+        outline:none;
+        transition: 0.3s;
+    }
+
+    input::placeholder { color: rgba(255,255,255,0.6); }
+
+    input:focus {
+        background: rgba(255,255,255,0.15);
+        box-shadow: 0 0 10px rgba(108, 99, 255, 0.8), 0 0 20px rgba(0, 209, 255, 0.6);
+    }
+
+    button {
+        width: 100%;
+        padding: 14px;
+        border-radius: 12px;
+        border:none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        cursor: pointer;
+        background: #6C63FF;
+        color:#fff;
+        transition:0.3s;
+    }
+
+    button:hover {
+        background:#00D1FF;
+        box-shadow:0 0 20px #00D1FF, 0 0 40px #6C63FF;
+        transform: scale(1.05);
+    }
+
+    .flashes { list-style: none; margin-bottom: 15px; }
+    .flash {
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+        backdrop-filter: blur(5px);
+    }
+    .flash.error { background: rgba(255,0,0,0.2); color:#ff4d4d; }
+    .flash.success { background: rgba(0,255,0,0.2); color:#00ff99; }
+
+    p { margin-top: 15px; font-size:0.9rem; color:#aaa; }
+    a { color:#6C63FF; font-weight:600; text-decoration:none; }
+    a:hover { color:#00D1FF; text-decoration:underline; }
+
+    @media (max-width: 450px) {
+        .auth-container { padding: 35px 25px; }
+    }
+</style>
+</head>
+<body>
+
+    <div class="particle-container">
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+    </div>
+
+    <div class="auth-container">
+        <h2>Create Account</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+              {% for category, message in messages %}
+                <li class="flash {{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('register') }}" method="post">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" required>
+
+            <button type="submit">Create Account</button>
+        </form>
+
+        <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+        <p><a href="{{ url_for('index') }}">Back to Home</a></p>
+    </div>
+
+</body>
+</html>

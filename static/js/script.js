@@ -22,6 +22,7 @@ class IPInfoApp {
         this.ipInfoEl = document.getElementById('ipInfo');
         this.toast = document.getElementById('toast');
         this.toastMessage = document.getElementById('toastMessage');
+        this.saveBtn = document.getElementById('saveBtn');
 
         // Info display elements
         this.ipv4El = document.getElementById('ipv4');
@@ -67,9 +68,23 @@ class IPInfoApp {
             }
         });
 
+        // Save button
+        if (this.saveBtn) {
+            this.saveBtn.addEventListener('click', () => this.saveCurrentSnapshot());
+        }
+
         // Auto-fetch on page load
         window.addEventListener('load', () => {
-            setTimeout(() => this.fetchIPInfo(), 500);
+            setTimeout(async () => {
+                // If a saved entry id is specified in the query string, load that entry
+                const params = new URLSearchParams(window.location.search);
+                const loadId = params.get('load_entry');
+                if (loadId) {
+                    await this.loadSavedEntryById(loadId);
+                } else {
+                    await this.fetchIPInfo();
+                }
+            }, 500);
         });
     }
 
@@ -110,6 +125,43 @@ class IPInfoApp {
             this.showToast('Data refreshed successfully!');
         } else {
             await this.fetchIPInfo();
+        }
+    }
+
+
+    async saveCurrentSnapshot() {
+        if (!this.currentData) {
+            this.showToast('No data to save. Fetch IP info first.');
+            return;
+        }
+
+        let title = prompt('Enter a title for this saved snapshot (optional):', '');
+        // build payload: include title and the full snapshot
+        const payload = Object.assign({}, this.currentData);
+        if (title) payload.title = title;
+
+        try {
+            this.saveBtn.disabled = true;
+            const r = await fetch('/api/save_entry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to save entry');
+            }
+
+            const body = await r.json();
+            this.showToast('Saved snapshot successfully!');
+            // Optionally navigate to saved page
+            // window.location.href = '/saved';
+        } catch (error) {
+            console.error('Save failed', error);
+            this.showToast('Failed to save: ' + error.message);
+        } finally {
+            this.saveBtn.disabled = false;
         }
     }
 
@@ -243,6 +295,33 @@ class IPInfoApp {
         setTimeout(() => {
             this.toast.classList.add('hidden');
         }, 3000);
+    }
+
+
+    async loadSavedEntryById(entryId) {
+        try {
+            this.showLoading();
+            const r = await fetch('/api/saved_entries/' + encodeURIComponent(entryId));
+            if (!r.ok) {
+                throw new Error('Failed to load saved entry');
+            }
+            const body = await r.json();
+            const entry = body.entry;
+            // entry.data should be the same format as the API response for ip info
+            if (entry && entry.data) {
+                this.currentData = entry.data;
+                this.displayIPInfo(this.currentData);
+                this.hideLoading();
+                this.showIPInfo();
+                this.showToast('Loaded saved snapshot');
+            } else {
+                throw new Error('Saved entry has no data');
+            }
+        } catch (err) {
+            console.error('loadSavedEntryById error', err);
+            this.showError('Could not load saved snapshot.');
+            this.hideLoading();
+        }
     }
 
     escapeHtml(text) {
