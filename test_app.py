@@ -1,6 +1,6 @@
 import pytest
 
-from app import IPInfoCollector, app
+from app import IPInfoCollector, app, create_user, get_user_by_username
 
 
 def test_ipv4_validator():
@@ -49,13 +49,13 @@ def test_save_and_retrieve_snapshot():
     # ensure user exists
     create_ok = None
     try:
-        create_ok = app.create_user(username, password)
+        create_ok = create_user(username, password)
     except Exception:
-        # If create_user isn't accessible through app imported module, skip create
+        # If create_user isn't accessible for some reason, skip create
         create_ok = True
 
     # fetch user id
-    user = app.get_user_by_username(username)
+    user = get_user_by_username(username)
     assert user is not None
 
     with client.session_transaction() as sess:
