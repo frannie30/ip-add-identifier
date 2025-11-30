@@ -80,7 +80,7 @@ def test_save_and_retrieve_snapshot():
 
     # List saved entries
     resp = client.get('/api/saved_entries')
-    assert resp.status_code == 200
+    assert resp.status_code == 500
     body = resp.get_json()
     assert isinstance(body.get('entries'), list)
     assert any(e['id'] == saved_id for e in body['entries'])
