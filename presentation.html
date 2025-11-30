@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Pipeline Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+/* 1. RESET & BASIC SETUP */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background-color: #070812;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Prevent scrolling */
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #e6eef8; /* default page text color */
+}
+
+/* 2. SLIDE CONTAINER */
+#deck-viewport {
+    width: 1280px; 
+    height: 720px; 
+    position: relative;
+    box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+}
+
+.slide {
+    width: 100%; 
+    height: 100%; 
+    background-color: #1e293b; 
+    position: absolute; 
+    top: 0; 
+    left: 0;
+    padding: 60px;
+    display: none;
+    flex-direction: column;
+    border-radius: 12px;
+    opacity: 0;
+    transition: opacity 0.28s ease-in-out, transform 0.28s ease;
+}
+
+.slide.active { display: flex; opacity: 1; z-index: 10; }
+
+.slide.bg-image::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    /* stronger overlay to improve text contrast on image slides */
+    background-color: linear-gradient(rgba(7,8,18,0.88), rgba(15,23,42,0.88));
+    background-color: rgba(7, 8, 18, 0.88); z-index: 1; border-radius: 12px;
+}
+.slide.bg-image > * { position: relative; z-index: 2; }
+
+/* 3. CONTROLS */
+.controls {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; background-color: rgba(30, 41, 59, 0.8);
+    padding: 10px 20px; border-radius: 30px; backdrop-filter: blur(5px);
+    border: 1px solid #334155; z-index: 100;
+}
+.nav-btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 5px 15px; transition: color 0.2s; }
+.nav-btn:hover { color: #38bdf8; }
+.slide-counter { color: #94a3b8; font-size: 16px; align-self: center; font-variant-numeric: tabular-nums; }
+
+/* 4. COMPONENTS */
+.slide-title { font-size: 48px; margin-bottom: 36px; color: #7dd3fc; border-left: 6px solid #7dd3fc; padding-left: 20px; text-shadow: 0 4px 18px rgba(0,0,0,0.6); }
+h1, h2, h3, h4 { color: #ffffff; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+p, li { color: #e6eef8; font-size: 22px; line-height: 1.65; }
+.content-area { display: flex; flex: 1; width: 100%; gap: 40px; }
+.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; width: 100%; align-items: center; height: 100%; }
+
+/* Terminal */
+.terminal-window { background-color: #0f172a; border-radius: 8px; border: 1px solid #334155; font-family: 'Fira Code', monospace; overflow: hidden; display: flex; flex-direction: column; height: 100%; max-height: 500px; }
+.terminal-header { background-color: #1e293b; padding: 10px 15px; display: flex; gap: 8px; border-bottom: 1px solid #334155; }
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.red { background-color: #ef4444; } .yellow { background-color: #eab308; } .green { background-color: #22c55e; }
+.terminal-body { padding: 18px; color: #dbe7ff; font-size: 15px; overflow-y: auto; flex-grow: 1; text-align: left; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
+
+.code-card { background-color: rgba(15,23,42,0.95); border-left: 5px solid #7dd3fc; padding: 20px; font-family: 'Fira Code', monospace; color: #f1f7ff; font-size: 17px; border-radius: 0 8px 8px 0; margin-bottom: 20px; box-shadow: 0 6px 18px rgba(2,6,23,0.6); }
+.keyword { color: #c084fc; } .function { color: #38bdf8; } .string { color: #86efac; } .comment { color: #64748b; }
+
+/* Simulation */
+.screenshot-container { display: none; width: 100%; height: 100%; border-radius: 8px; overflow: hidden; border: 2px solid #38bdf8; background-size: cover; background-position: center; position: relative; animation: fadeIn 1s ease-in-out; }
+.screenshot-container img { width: 100%; height: 100%; object-fit: contain; background: #000; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.run-btn { background-color: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-bottom: 20px; font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 8px; }
+.run-btn:hover { background-color: #1d4ed8; }
+.cursor { display: inline-block; width: 8px; height: 16px; background-color: #a5b4fc; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.prompt { color: #22c55e; } .path { color: #38bdf8; } .git-branch { color: #f472b6; }
+
+/* APP MOCKUP STYLES (Slide 15) */
+.app-mockup { width: 100%; height: 100%; background: #f1f5f9; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; position: relative; font-family: 'Inter', sans-serif; }
+.app-header { background: #2563eb; padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center; }
+.app-body { padding: 20px; color: #334155; flex: 1; display: flex; flex-direction: column; gap: 15px; position: relative;}
+.app-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+.app-btn { background: #2563eb; color: white; padding: 8px 16px; border-radius: 4px; border: none; font-size: 14px; }
+.app-input { border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; width: 100%; margin-bottom: 10px; }
+.loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 10px;}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.toast { position: absolute; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 10px 20px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* GitHub UI Mockup (Slide 14) */
+.gh-container { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; width: 100%; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; overflow: hidden; }
+.gh-header { background: #161b22; padding: 15px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 10px; color: #e6edf3; font-weight: 600; }
+.gh-step { padding: 12px 15px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; color: #e6edf3; font-size: 14px; }
+.gh-step:last-child { border-bottom: none; }
+.gh-icon { width: 20px; height: 20px; background: #238636; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 12px; color: white; }
+.gh-time { margin-left: auto; color: #848d97; font-size: 12px; }
+
+/* Utils */
+.comparison-box { padding: 40px; border-radius: 12px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.box-red { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border: 1px solid rgba(239, 68, 68, 0.3); }
+.box-green { background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); border: 1px solid rgba(34, 197, 94, 0.3); }
+.icon-large { font-size: 60px; margin-bottom: 20px; }
+.arrow-down { font-size: 24px; margin: 15px 0; color: #94a3b8; }
+.pipeline-step { background-color: #1e293b; border: 1px solid #475569; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+.checklist-item { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; background-color: #1e293b; padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e; }
+.team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; }
+.team-card { background-color: #334155; padding: 30px 20px; border-radius: 12px; text-align: center; border-top: 4px solid #38bdf8; }
+.team-icon { width: 60px; height: 60px; background-color: #0f172a; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #38bdf8; font-size: 24px; }
+</style>
+</head>
+<body>
+
+<div id="deck-viewport">
+
+    <!-- SLIDE 1 -->
+    <div class="slide bg-image active" style="background-image: url('https://googleusercontent.com/image_generation_content/0');" id="slide1">
+        <div style="text-align: center; z-index: 2; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+            <div style="background-color: rgba(15, 23, 42, 0.9); padding: 60px; border-radius: 16px; display: inline-block; border: 1px solid #38bdf8;">
+                <h1 style="font-size: 54px; margin-bottom: 20px; color: #fff;">DevOps Pipeline for IP Tracker v2.0</h1>
+                <p style="font-size: 24px; color: #38bdf8; margin-bottom: 40px;">Automated CI/CD Implementation</p>
+                <div style="display: flex; justify-content: center; gap: 40px; margin-top: 20px;">
+                    <div style="text-align: center;"><i class="fa-solid fa-user-circle" style="font-size: 30px; color: #94a3b8; margin-bottom: 10px;"></i><p style="font-size: 16px;">Bea<br><span style="font-size: 14px; color: #64748b;">Strategy Lead</span></p></div>
+                    <div style="text-align: center;"><i class="fa-solid fa-code" style="font-size: 30px; color: #94a3b8; margin-bottom: 10px;"></i><p style="font-size: 16px;">Charlotte<br><span style="font-size: 14px; color: #64748b;">Backend Dev</span></p></div>
+                    <div style="text-align: center;"><i class="fa-solid fa-vial-circle-check" style="font-size: 30px; color: #94a3b8; margin-bottom: 10px;"></i><p style="font-size: 16px;">Mielle<br><span style="font-size: 14px; color: #64748b;">QA Engineer</span></p></div>
+                    <div style="text-align: center;"><i class="fa-solid fa-server" style="font-size: 30px; color: #94a3b8; margin-bottom: 10px;"></i><p style="font-size: 16px;">Julia<br><span style="font-size: 14px; color: #64748b;">DevOps</span></p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 2 -->
+    <div class="slide" id="slide2">
+        <h2 class="slide-title">The Scenario: Manual vs. Automated</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div class="comparison-box box-red">
+                    <i class="fa-solid fa-triangle-exclamation icon-large" style="color: #ef4444;"></i>
+                    <h3 style="color: #fca5a5; margin-bottom: 20px;">The Old Way</h3>
+                    <p style="font-weight: 600; color: #fff;">Manual Code Reviews</p>
+                    <i class="fa-solid fa-arrow-down arrow-down"></i>
+                    <p>Database Errors</p>
+                    <i class="fa-solid fa-arrow-down arrow-down"></i>
+                    <p style="color: #fca5a5; font-weight: 700;">Broken Logins</p>
+                </div>
+                <div class="comparison-box box-green">
+                    <i class="fa-solid fa-robot icon-large" style="color: #22c55e;"></i>
+                    <h3 style="color: #86efac; margin-bottom: 20px;">The DevOps Way</h3>
+                    <p style="font-weight: 600; color: #fff;">Automated Testing</p>
+                    <i class="fa-solid fa-arrow-down arrow-down"></i>
+                    <p>Security Checks</p>
+                    <i class="fa-solid fa-arrow-down arrow-down"></i>
+                    <p style="color: #86efac; font-weight: 700;">Reliable Data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3 -->
+    <div class="slide" id="slide3">
+        <h2 class="slide-title">Implementation: Backlog Features</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="margin-bottom: 20px;">1. User Authentication</h3>
+                    <p style="margin-bottom: 20px;">We used <code>werkzeug.security</code> to hash passwords, ensuring user credentials are never stored in plain text.</p>
+                    <h3 style="margin-bottom: 20px;">2. Historical IP Tracking</h3>
+                    <p>Implemented a local <strong>SQLite database</strong>. This allows users to save snapshots of their IP data and view them later.</p>
+                    <br>
+                    <div style="background: #334155; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <i class="fa-solid fa-lightbulb" style="color: #f59e0b; margin-right: 10px;"></i>
+                        <span style="color: #fff; font-size: 18px;">Transforms "Lookup Tool" &rarr; "Record System"</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="code-card">
+                        <div style="color: #64748b; margin-bottom: 10px;"># app.py: Secure Password Hashing</div>
+                        <span class="keyword">from</span> werkzeug.security <span class="keyword">import</span> generate_password_hash<br><br>
+                        <span class="keyword">def</span> <span class="function">create_user</span>(username, password):<br>
+                        &nbsp;&nbsp;hash = <span class="function">generate_password_hash</span>(password)<br>
+                        &nbsp;&nbsp;cursor.<span class="function">execute</span>(<span class="string">"INSERT INTO users..."</span>, (user, hash))
+                    </div>
+                    <div class="code-card" style="border-left-color: #22c55e;">
+                        <div style="color: #64748b; margin-bottom: 10px;"># app.py: Saved Entries</div>
+                        <span class="keyword">def</span> <span class="function">create_saved_entry</span>(user_id, data):<br>
+                        &nbsp;&nbsp;json_data = json.<span class="function">dumps</span>(data)<br>
+                        &nbsp;&nbsp;cursor.<span class="function">execute</span>(<span class="string">"INSERT INTO saved_entries..."</span>)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4 -->
+    <div class="slide" id="slide4">
+        <h2 class="slide-title">The Foundation: Database Schema</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <ul style="list-style: none;">
+                        <li style="margin-bottom: 30px;"><i class="fa-solid fa-database" style="color: #38bdf8; margin-right: 15px;"></i><strong>What?</strong> Database Initialization Script.</li>
+                        <li style="margin-bottom: 30px;"><i class="fa-solid fa-repeat" style="color: #38bdf8; margin-right: 15px;"></i><strong>Why?</strong> To manage data persistence. Creates <code>users</code> and <code>saved_entries</code> tables.</li>
+                        <li><i class="fa-solid fa-key" style="color: #38bdf8; margin-right: 15px;"></i><strong>How?</strong> Runs on startup. Ensures structure consistency across Dev and Cloud.</li>
+                    </ul>
+                </div>
+                <div class="terminal-window">
+                    <div class="terminal-header"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div><span style="color: #64748b; font-size: 12px; margin-left: 10px;">app.py</span></div>
+                    <div class="terminal-body">
+                        <span class="keyword">def</span> <span class="function">init_db</span>():<br>
+                        &nbsp;&nbsp;<span class="string">"""Initialize SQLite tables if missing"""</span><br>
+                        &nbsp;&nbsp;conn = <span class="function">get_db_connection</span>()<br>
+                        &nbsp;&nbsp;cur = conn.<span class="function">cursor</span>()<br>
+                        &nbsp;&nbsp;cur.<span class="function">execute</span>(<span class="string">"CREATE TABLE IF NOT EXISTS users..."</span>)<br>
+                        &nbsp;&nbsp;cur.<span class="function">execute</span>(<span class="string">"CREATE TABLE IF NOT EXISTS saved_entries..."</span>)<br>
+                        &nbsp;&nbsp;conn.<span class="function">commit</span>()
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5 -->
+    <div class="slide" id="slide5">
+        <h2 class="slide-title">The Logic: Testing Stateful Features</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <p style="margin-bottom: 20px;">Testing a database is harder than simple math. We used <strong>Integration Testing</strong> to verify the entire flow.</p>
+                    <div style="background-color: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 8px;">
+                        <h4 style="color: #fff; margin-bottom: 10px;">Test Strategy:</h4>
+                        <ul style="margin-left: 20px; color: #cbd5e1;">
+                            <li><strong>Unit Test:</strong> Create fake user, hash password, verify login logic.</li>
+                            <li><strong>Integration Test:</strong> Save IP entry, assert database row count increases.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="code-card" style="height: 100%; border-left-color: #facc15;">
+                    <div style="color: #64748b; margin-bottom: 10px;"># test_app.py: Integration Test</div>
+                    <span class="keyword">def</span> <span class="function">test_save_and_retrieve</span>(client):<br>
+                    &nbsp;&nbsp;<span class="comment"># 1. Login Mock User</span><br>
+                    &nbsp;&nbsp;<span class="keyword">with</span> client.session_transaction() <span class="keyword">as</span> sess:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;sess[<span class="string">'user_id'</span>] = <span class="string">1</span><br><br>
+                    &nbsp;&nbsp;<span class="comment"># 2. Save Data</span><br>
+                    &nbsp;&nbsp;resp = client.<span class="function">post</span>(<span class="string">'/api/save_entry'</span>, json=data)<br>
+                    &nbsp;&nbsp;<span class="keyword">assert</span> resp.status_code == <span class="string">201</span><br><br>
+                    &nbsp;&nbsp;<span class="comment"># 3. Verify Retrieval</span><br>
+                    &nbsp;&nbsp;resp = client.<span class="function">get</span>(<span class="string">'/api/saved_entries'</span>)<br>
+                    &nbsp;&nbsp;<span class="keyword">assert</span> len(resp.json[<span class="string">'entries'</span>]) == <span class="string">1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6 -->
+    <div class="slide" id="slide6">
+        <h2 class="slide-title">The Engine: GitHub Actions YAML</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <p>The "Automation Robot" standardizes our environment.</p>
+                    <br>
+                    <div class="pipeline-step"><span><i class="fa-solid fa-play" style="color: #38bdf8; margin-right: 10px;"></i> Trigger: Push to Main</span></div>
+                    <div class="pipeline-step"><span><i class="fa-brands fa-linux" style="color: #fff; margin-right: 10px;"></i> Provision Ubuntu Server</span></div>
+                    <div class="pipeline-step"><span><i class="fa-brands fa-python" style="color: #facc15; margin-right: 10px;"></i> Install Python 3.9</span></div>
+                    <div class="pipeline-step" style="border-color: #38bdf8; background-color: rgba(56, 189, 248, 0.1);"><span><i class="fa-solid fa-key" style="color: #38bdf8; margin-right: 10px;"></i> <strong>Crucial:</strong> Inject Secret Keys</span></div>
+                </div>
+                <div class="code-card" style="font-size: 14px;">
+                    <div style="color: #64748b; margin-bottom: 10px;"># .github/workflows/ci-pipeline.yml</div>
+                    <span class="keyword">jobs:</span><br>
+                    &nbsp;&nbsp;<span class="function">build-and-test:</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">runs-on:</span> ubuntu-latest<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">steps:</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <span class="keyword">name:</span> Install Dependencies<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">run: pip install -r requirements.txt</span><br><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <span class="keyword">name:</span> Run Tests<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">env:</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="function">FLASK_SECRET_KEY:</span> ${{ secrets.TEST_KEY }}<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">run: pytest</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7 -->
+    <div class="slide" id="slide7">
+        <h2 class="slide-title">The Gatekeeper: Branch Protection</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <p>We cannot afford security bugs in production.</p>
+                    <br>
+                    <div style="background-color: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #475569;">
+                        <h3 style="color: #fff; margin-bottom: 15px;">The Rule:</h3>
+                        <p style="margin-bottom: 10px;"><i class="fa-solid fa-shield-halved" style="color: #22c55e; margin-right: 10px;"></i> <strong>Block Merge</strong> unless all 5 DB tests pass.</p>
+                        <p style="margin-bottom: 10px;"><i class="fa-solid fa-lock" style="color: #facc15; margin-right: 10px;"></i> <strong>Prevents</strong> broken security features.</p>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: center; align-items: center;">
+                    <i class="fa-solid fa-lock" style="font-size: 200px; color: #38bdf8; opacity: 0.8; text-shadow: 0 0 50px rgba(56, 189, 248, 0.5);"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Happy Path Simulation -->
+    <div class="slide" id="slide8">
+        <h2 class="slide-title">Sample Run: The "Happy Path"</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 20px;">Scenario: Valid Feature Push</h3>
+                    <p>Charlotte pushes the "Saved Entries" feature. The automation triggers, builds the DB, and runs tests.</p>
+                    <br>
+                    <button class="run-btn" onclick="startSimulation('sim-success', 'img-success')"><i class="fa-solid fa-play"></i> Run Live Git Simulation</button>
+                </div>
+                <!-- Terminal for Simulation -->
+                <div id="sim-success" class="terminal-window">
+                    <div class="terminal-header" style="background-color: #334155;"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div><span style="color: #cbd5e1; font-size: 12px; margin-left: 10px;">developer@macbook:~/ip-app</span></div>
+                    <div class="terminal-body" id="term-body-success"><span class="prompt">➜</span> <span class="path">~/ip-app</span> <span class="git-branch">git:(main)</span> <span class="cursor"></span></div>
+                </div>
+                <!-- Result Image -->
+                <div id="img-success" class="screenshot-container">
+                    <div style="background-color: #22c55e; color: white; padding: 10px; font-weight: bold; text-align: center;"><i class="fa-solid fa-check-circle"></i> SUCCESS: GitHub Actions Triggered</div>
+                    <img src="image_1e8cf9.jpg" alt="GitHub Actions Success Screenshot">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: THE SABOTAGE CODE (NEW) -->
+    <div class="slide" id="slide9">
+        <h2 class="slide-title">The Sabotage: The Breaking Code</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="color: #f87171; margin-bottom: 20px;">Introducing the Bug</h3>
+                    <p style="margin-bottom: 15px;">To prove the pipeline works, we wrote a test case that deliberately breaks expectations.</p>
+                    <div style="background-color: #1e293b; border-left: 4px solid #f87171; padding: 20px; border-radius: 4px;">
+                        <p style="font-size: 18px; color: #cbd5e1;">
+                            <i class="fa-solid fa-bug" style="color: #f87171; margin-right: 10px;"></i>
+                            We change the expected status code from <strong>200 (OK)</strong> to <strong>500 (Server Error)</strong>.
+                        </p>
+                        <br>
+                        <p style="font-size: 18px; color: #cbd5e1;">
+                            <i class="fa-solid fa-circle-xmark" style="color: #f87171; margin-right: 10px;"></i>
+                            Since the app is working correctly (returning 200), this assertion will <strong>FAIL</strong> the test.
+                        </p>
+                    </div>
+                </div>
+                <div class="code-card" style="border-left-color: #f87171; height: 100%;">
+                    <div style="color: #64748b; margin-bottom: 10px;"># test_app.py: Intentionally Broken Test</div>
+                    <span class="keyword">def</span> <span class="function">test_index_page</span>(client):<br>
+                    &nbsp;&nbsp;resp = client.<span class="function">get</span>(<span class="string">'/'</span>)<br><br>
+                    &nbsp;&nbsp;<span class="comment"># SABOTAGE:</span><br>
+                    &nbsp;&nbsp;<span class="comment"># We changed 200 to 500 to break the build.</span><br>
+                    &nbsp;&nbsp;<span class="comment"># The app returns 200, so this assertion FAILS.</span><br>
+                    &nbsp;&nbsp;<span class="keyword">assert</span> resp.status_code == <span class="string">500</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: Sabotage Simulation -->
+    <div class="slide" id="slide10">
+        <h2 class="slide-title">Sample Run: The Sabotage</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 20px;">Scenario: Breaking the Pipeline</h3>
+                    <p>We push the broken code from the previous slide. The pipeline should detect the failure and <strong>block the merge</strong>.</p>
+                    <br>
+                    <button class="run-btn" style="background-color: #ef4444;" onclick="startSimulation('sim-fail', 'img-fail', true)"><i class="fa-solid fa-bug"></i> Run Sabotage Test</button>
+                </div>
+                 <!-- Terminal for Simulation -->
+                 <div id="sim-fail" class="terminal-window">
+                    <div class="terminal-header" style="background-color: #334155;"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div><span style="color: #cbd5e1; font-size: 12px; margin-left: 10px;">developer@macbook:~/ip-app</span></div>
+                    <div class="terminal-body" id="term-body-fail"><span class="prompt">➜</span> <span class="path">~/ip-app</span> <span class="git-branch">git:(main)</span> <span class="cursor"></span></div>
+                </div>
+                <!-- Result Image -->
+                <div id="img-fail" class="screenshot-container" style="border-color: #ef4444;">
+                     <div style="background-color: #ef4444; color: white; padding: 10px; font-weight: bold; text-align: center;"><i class="fa-solid fa-xmark-circle"></i> BLOCKED: Merge Prevented</div>
+                    <img src="image_1e8d9a.jpg" alt="GitHub Actions Failure Screenshot">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11 -->
+    <div class="slide" id="slide11">
+        <h2 class="slide-title">Team Roles & Strategy</h2>
+        <div class="content-area">
+            <div class="team-grid">
+                <div class="team-card"><div class="team-icon"><i class="fa-solid fa-chess"></i></div><h3>Bea</h3><p>Strategy Lead</p></div>
+                <div class="team-card"><div class="team-icon"><i class="fa-solid fa-code-branch"></i></div><h3>Charlotte</h3><p>Backend</p></div>
+                <div class="team-card"><div class="team-icon"><i class="fa-solid fa-bug-slash"></i></div><h3>Mielle</h3><p>QA Engineer</p></div>
+                <div class="team-card"><div class="team-icon"><i class="fa-solid fa-gears"></i></div><h3>Julia</h3><p>DevOps</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12 -->
+    <div class="slide" id="slide12">
+        <h2 class="slide-title">Reflection: Team Dynamics</h2>
+        <div class="content-area">
+            <div class="two-column">
+                 <div>
+                    <h3 style="margin-bottom: 20px; color: #fff;">Challenge: Coordination</h3>
+                    <p>The biggest shift was coordinating around the shared database file.</p>
+                    <br>
+                    <p><i class="fa-solid fa-file-shield" style="color: #38bdf8; margin-right: 10px;"></i> <strong>Accountability:</strong> Strict <code>.gitignore</code> rules.</p>
+                    <br>
+                    <p><i class="fa-solid fa-magnifying-glass-chart" style="color: #38bdf8; margin-right: 10px;"></i> <strong>Code Review:</strong> SQL queries reviewed for injection risks.</p>
+                </div>
+                <div style="display: flex; justify-content: center;"><i class="fa-solid fa-people-arrows" style="font-size: 180px; color: #475569;"></i></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13 -->
+    <div class="slide" id="slide13">
+        <h2 class="slide-title">Reflection: Technical Challenges</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="margin-bottom: 20px; color: #f87171;">The Issue: Missing Secrets</h3>
+                    <p>Tests failed in the cloud because <code>FLASK_SECRET_KEY</code> was missing.</p>
+                    <br>
+                    <h3 style="margin-bottom: 20px; color: #22c55e;">The Solution</h3>
+                    <p>Injected the key via GitHub Secrets.</p>
+                </div>
+                <div class="terminal-window">
+                    <div class="terminal-header"><span style="color: #f87171;">Error Log</span></div>
+                    <div class="terminal-body">
+                        <span style="color: #f87171;">RuntimeError: The session is unavailable because no secret key was set.</span><br><br>
+                        <span class="comment"># Resolution in YAML:</span><br>
+                        <span class="keyword">env:</span><br>
+                        &nbsp;&nbsp;<span class="function">FLASK_SECRET_KEY:</span> ${{ secrets.TEST_KEY }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: GitHub Process -->
+    <div class="slide" id="slide14">
+        <h2 class="slide-title">The GitHub Process: Visualized</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 20px;">1. The Pipeline Steps</h3>
+                    <p style="margin-bottom: 15px;">When code is pushed, GitHub executes this specific sequence defined in our YAML:</p>
+                    
+                    <div class="gh-container">
+                        <div class="gh-header"><i class="fa-solid fa-play-circle"></i> build-and-test</div>
+                        <div class="gh-step">
+                            <div class="gh-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Set up job</span>
+                            <span class="gh-time">2s</span>
+                        </div>
+                        <div class="gh-step">
+                            <div class="gh-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Install Dependencies (pip)</span>
+                            <span class="gh-time">12s</span>
+                        </div>
+                        <div class="gh-step">
+                            <div class="gh-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Run Tests (pytest)</span>
+                            <span class="gh-time">5s</span>
+                        </div>
+                        <div class="gh-step">
+                            <div class="gh-icon"><i class="fa-solid fa-check"></i></div>
+                            <span>Post Run / Cleanup</span>
+                            <span class="gh-time">1s</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 20px;">2. Test Case Execution</h3>
+                    <p style="margin-bottom: 15px;">Detailed logs show exactly which functions passed:</p>
+                    <div class="terminal-window" style="height: 300px;">
+                        <div class="terminal-header"><span style="color: #cbd5e1; font-size: 12px;">Run Tests Output</span></div>
+                        <div class="terminal-body">
+                            <span style="color: #a5b4fc;">$ pytest</span><br>
+                            ================ test session starts ================<br>
+                            platform linux -- Python 3.9.6, pytest-8.4.2<br>
+                            collected 5 items<br><br>
+                            <span style="color: #22c55e;">test_app.py::test_ipv4_validator PASSED [ 20%]</span><br>
+                            <span style="color: #22c55e;">test_app.py::test_ipv6_validator PASSED [ 40%]</span><br>
+                            <span style="color: #22c55e;">test_app.py::test_backlog_endpoint PASSED [ 60%]</span><br>
+                            <span style="color: #22c55e;">test_app.py::test_index_page PASSED [ 80%]</span><br>
+                            <span style="color: #22c55e;">test_app.py::test_save_and_retrieve_snapshot PASSED [100%]</span><br>
+                            <br>
+                            <span style="color: #22c55e;">================ 5 passed in 0.19s ================</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 15: LIVE APP SIMULATION -->
+    <div class="slide" id="slide15">
+        <h2 class="slide-title">Full System Demo</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <h3 style="color: #fff; margin-bottom: 20px;">Live Application Flow</h3>
+                    <p style="margin-bottom: 15px;">Simulating the user journey verified by our pipeline:</p>
+                    <ul style="list-style: none;">
+                        <li style="margin-bottom: 10px;"><i class="fa-solid fa-right-to-bracket" style="color: #38bdf8; width: 25px;"></i> Login with Credentials</li>
+                        <li style="margin-bottom: 10px;"><i class="fa-solid fa-globe" style="color: #22c55e; width: 25px;"></i> Fetch IP Data (API Call)</li>
+                        <li style="margin-bottom: 10px;"><i class="fa-solid fa-floppy-disk" style="color: #facc15; width: 25px;"></i> Save to History (DB)</li>
+                    </ul>
+                    <br>
+                    <button class="run-btn" onclick="startAppDemo()"><i class="fa-solid fa-play"></i> Run App Demo</button>
+                </div>
+                
+                <!-- THE APP MOCKUP -->
+                <div class="app-mockup">
+                    <div class="app-header">
+                        <span><i class="fa-solid fa-network-wired"></i> IP Info App</span>
+                        <span id="app-user-status"><i class="fa-solid fa-user"></i> Guest</span>
+                    </div>
+                    <div class="app-body" id="app-screen-login">
+                        <h3 style="color:#334155; text-align: center; margin-top: 30px;">Login</h3>
+                        <div style="width: 80%; margin: 0 auto;">
+                            <input type="text" class="app-input" placeholder="Username" id="demo-user">
+                            <input type="password" class="app-input" placeholder="Password" id="demo-pass">
+                            <button class="app-btn" style="width: 100%;">Sign In</button>
+                        </div>
+                    </div>
+                    
+                    <div class="app-body" id="app-screen-main" style="display: none;">
+                        <div class="app-card" style="text-align: center;">
+                            <p style="font-size: 14px; color: #64748b;">Your IP Address</p>
+                            <h2 style="color: #2563eb; margin: 10px 0;" id="demo-ip-display">---.---.---.---</h2>
+                            <button class="app-btn" id="btn-fetch-ip">Get IP Info</button>
+                        </div>
+                        <div class="app-card" id="demo-details" style="display: none; flex: 1;">
+                            <p><strong>ISP:</strong> Starlink Internet</p>
+                            <p><strong>City:</strong> Mandaluyong</p>
+                            <p><strong>Timezone:</strong> Asia/Manila</p>
+                            <br>
+                            <button class="app-btn" style="background: #22c55e;" id="btn-save-ip"><i class="fa-solid fa-floppy-disk"></i> Save Entry</button>
+                        </div>
+                    </div>
+                    <!-- Toast -->
+                    <div class="toast" id="demo-toast"><i class="fa-solid fa-check"></i> Saved Successfully!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 16 -->
+    <div class="slide" id="slide16">
+        <h2 class="slide-title">Conclusion</h2>
+        <div class="content-area">
+            <div class="two-column">
+                <div>
+                    <p style="margin-bottom: 30px;">We successfully transformed a simple tool into a secure, database-backed application.</p>
+                    <div class="checklist-item"><i class="fa-solid fa-circle-check check-icon"></i><span>Implemented User Authentication</span></div>
+                    <div class="checklist-item"><i class="fa-solid fa-circle-check check-icon"></i><span>Automated Database Testing</span></div>
+                    <div class="checklist-item"><i class="fa-solid fa-circle-check check-icon"></i><span>Proved Security Gates Work</span></div>
+                </div>
+                <div style="text-align: center;">
+                    <h1 style="font-size: 80px; color: #22c55e; margin-bottom: 20px;">READY</h1>
+                    <p style="font-size: 24px;">for Production</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- NAVIGATION CONTROLS -->
+<div class="controls">
+    <button class="nav-btn" onclick="changeSlide(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+    <span class="slide-counter" id="slide-counter">1 / 16</span>
+    <button class="nav-btn" onclick="changeSlide(1)"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+
+<script>
+    let currentSlide = 1;
+    const totalSlides = 16;
+
+    function showSlide(n) {
+        if (n > totalSlides) currentSlide = 1;
+        if (n < 1) currentSlide = totalSlides;
+        const slides = document.querySelectorAll('.slide');
+        slides.forEach(slide => slide.classList.remove('active'));
+        document.getElementById('slide' + currentSlide).classList.add('active');
+        document.getElementById('slide-counter').innerText = currentSlide + ' / ' + totalSlides;
+    }
+
+    function changeSlide(n) {
+        currentSlide += n;
+        showSlide(currentSlide);
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'ArrowRight') changeSlide(1);
+        else if (event.key === 'ArrowLeft') changeSlide(-1);
+    });
+
+    // --- GIT SIMULATION ---
+    async function typeWriter(text, elementId, speed = 40) {
+        const element = document.getElementById(elementId);
+        const cursor = element.querySelector('.cursor');
+        if(cursor) cursor.remove();
+        for (let i = 0; i < text.length; i++) {
+            element.innerHTML += text.charAt(i);
+            await new Promise(resolve => setTimeout(resolve, speed));
+        }
+        element.innerHTML += '<span class="cursor"></span>';
+    }
+
+    async function startSimulation(termId, imgId, isSabotage = false) {
+        const termBody = document.getElementById(termId.replace('sim', 'term-body'));
+        const termWindow = document.getElementById(termId);
+        const resultImg = document.getElementById(imgId);
+        resultImg.style.display = 'none';
+        termWindow.style.display = 'flex';
+        termBody.innerHTML = '<span class="prompt">➜</span> <span class="path">~/ip-app</span> <span class="git-branch">git:(main)</span> ';
+        await typeWriter('git add .', termBody.id);
+        await new Promise(r => setTimeout(r, 300));
+        termBody.innerHTML += '<br>';
+        let commitMsg = isSabotage ? 'git commit -m "feat: user logic (broken)"' : 'git commit -m "feat: add saved entries"';
+        termBody.innerHTML += '<span class="prompt">➜</span> <span class="path">~/ip-app</span> <span class="git-branch">git:(main)</span> ';
+        await typeWriter(commitMsg, termBody.id);
+        await new Promise(r => setTimeout(r, 300));
+        termBody.innerHTML += '<br>[main 8a4a517] ' + (isSabotage ? 'feat: user logic (broken)' : 'feat: add saved entries') + '<br>';
+        termBody.innerHTML += '<span class="prompt">➜</span> <span class="path">~/ip-app</span> <span class="git-branch">git:(main)</span> ';
+        await typeWriter('git push origin main', termBody.id);
+        await new Promise(r => setTimeout(r, 600));
+        termBody.innerHTML += '<br>Enumerating objects: 5, done.<br>Counting objects: 100% (5/5), done.<br>Writing objects: 100% (3/3), 420 bytes | 420.00 KiB/s, done.<br>Total 3 (delta 1), reused 0 (delta 0)<br>To github.com:frannie30/ip-add-identifier.git<br>   097cd6d..8a4a517  main -> main<br>';
+        await new Promise(r => setTimeout(r, 800));
+        termWindow.style.display = 'none';
+        resultImg.style.display = 'block';
+    }
+
+    // --- APP DEMO SIMULATION (Slide 15) ---
+    async function startAppDemo() {
+        const userField = document.getElementById('demo-user');
+        const passField = document.getElementById('demo-pass');
+        const loginScreen = document.getElementById('app-screen-login');
+        const mainScreen = document.getElementById('app-screen-main');
+        const userStatus = document.getElementById('app-user-status');
+        const ipDisplay = document.getElementById('demo-ip-display');
+        const details = document.getElementById('demo-details');
+        const fetchBtn = document.getElementById('btn-fetch-ip');
+        const toast = document.getElementById('demo-toast');
+
+        // Reset
+        userField.value = ''; passField.value = '';
+        loginScreen.style.display = 'flex';
+        mainScreen.style.display = 'none';
+        userStatus.innerHTML = '<i class="fa-solid fa-user"></i> Guest';
+        ipDisplay.innerText = '---.---.---.---';
+        details.style.display = 'none';
+        toast.style.display = 'none';
+        fetchBtn.innerHTML = 'Get IP Info';
+
+        // 1. Simulate Typing
+        await new Promise(r => setTimeout(r, 500));
+        userField.value = 'Charlotte';
+        await new Promise(r => setTimeout(r, 300));
+        passField.value = '********';
+        await new Promise(r => setTimeout(r, 500));
+
+        // 2. Switch to Logged In
+        loginScreen.style.display = 'none';
+        mainScreen.style.display = 'flex';
+        userStatus.innerHTML = '<i class="fa-solid fa-user-check"></i> Charlotte';
+        await new Promise(r => setTimeout(r, 800));
+
+        // 3. Click Fetch
+        fetchBtn.innerHTML = '<div class="loader"></div> Loading...';
+        await new Promise(r => setTimeout(r, 1200));
+        fetchBtn.innerHTML = 'Get IP Info';
+        ipDisplay.innerText = '112.198.102.55';
+        details.style.display = 'block';
+        await new Promise(r => setTimeout(r, 1000));
+
+        // 4. Click Save
+        toast.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
